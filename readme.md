@@ -6,7 +6,6 @@ Automatically summarize PDF documents using Ollama and LangChain.
 
 - Ollama
 - llama3.2
-- langchain langchain-community langchain-ollama pypdf
 
 ## Installation
 
@@ -20,10 +19,14 @@ pip install -r requirements.txt
 ollama serve
 ```
 
-## Usage
+## UI usage
+```bash
+python ui.py
+```
 
 ### Basic usage (default: current folder):
 ```bash
+python ui.py
 python summarizer.py
 ```
 
