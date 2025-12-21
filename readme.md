@@ -22,7 +22,7 @@ ollama serve
 
 ## Usage
 
-### Basic usage (default folder: `./my_papers`):
+### Basic usage (default: current folder):
 ```bash
 python summarizer.py
 ```
