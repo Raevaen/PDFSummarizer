@@ -15,7 +15,7 @@ except ImportError as e:
     print("If you already have a virtualenv, activate it first.")
     sys.exit(1)
 
-def summarize_pdf_folder(folder_path, model_name="llama3.2"):
+def summarize_pdf_folder(folder_path, model_name="llama3.2", callback=None):
     # 1. Initialize the Local Model (Optimized for CPU)
     llm = ChatOllama(model=model_name, temperature=0.1)
 
@@ -38,7 +38,6 @@ Text:
 CONCISE SUMMARY:"""
     ADAPTIVE_PROMPT = ChatPromptTemplate.from_template(prompt_template)
 
-    summaries = {}
     for filename in os.listdir(folder_path):
         if filename.endswith(".pdf"):
             print(f"--- Processing: {filename} ---")
@@ -61,10 +60,9 @@ CONCISE SUMMARY:"""
             final_messages = ADAPTIVE_PROMPT.format_messages(text=combined_text)
             final_summary = llm.invoke(final_messages)
 
-            summaries[filename] = final_summary.content
+            if callback:
+                callback(filename, final_summary.content)
             print(f"Summary for {filename}:\n{final_summary.content}\n")
-
-    return summaries
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Summarize PDFs in a folder using Ollama")
@@ -80,7 +78,4 @@ if __name__ == "__main__":
         os.makedirs(args.pdf_folder)
         print(f"Please put PDFs in {args.pdf_folder}")
     else:
-        summaries = summarize_pdf_folder(args.pdf_folder)
-        # For CLI, print summaries
-        for filename, summary in summaries.items():
-            print(f"Summary for {filename}:\n{summary}\n")
+        summarize_pdf_folder(args.pdf_folder)
