@@ -15,7 +15,17 @@ except ImportError as e:
     print("If you already have a virtualenv, activate it first.")
     sys.exit(1)
 
-def summarize_pdf_folder(folder_path, model_name="llama3.2", callback=None):
+def summarize_single_pdf(file_path, model_name="llama3.2"):
+    """
+    Summarize a single PDF file and return the summary as a string.
+    
+    Args:
+        file_path (str): Path to the PDF file.
+        model_name (str): Name of the Ollama model to use.
+    
+    Returns:
+        str: The summarized text.
+    """
     # 1. Initialize the Local Model (Optimized for CPU)
     llm = ChatOllama(model=model_name, temperature=0.1)
 
@@ -38,31 +48,45 @@ Text:
 CONCISE SUMMARY:"""
     ADAPTIVE_PROMPT = ChatPromptTemplate.from_template(prompt_template)
 
+    # Load and Split PDF
+    loader = PyPDFLoader(file_path)
+    docs = loader.load_and_split(text_splitter=text_splitter)
+    
+    # 3. Manual Map-Reduce Summarization
+    # Summarize each chunk
+    chunk_summaries = []
+    for doc in docs:
+        messages = ADAPTIVE_PROMPT.format_messages(text=doc.page_content)
+        summary = llm.invoke(messages)
+        chunk_summaries.append(summary.content)
+    
+    # Combine and summarize the chunk summaries
+    combined_text = "\n".join(chunk_summaries)
+    final_messages = ADAPTIVE_PROMPT.format_messages(text=combined_text)
+    final_summary = llm.invoke(final_messages)
+
+    return final_summary.content
+
+
+def summarize_pdf_folder(folder_path, model_name="llama3.2", callback=None):
+    """
+    Summarize all PDFs in a folder and optionally call a callback for each.
+    
+    Args:
+        folder_path (str): Path to the folder containing PDF files.
+        model_name (str): Name of the Ollama model to use.
+        callback (callable): Optional function to call with (filename, summary) after each PDF.
+    """
     for filename in os.listdir(folder_path):
         if filename.endswith(".pdf"):
             print(f"--- Processing: {filename} ---")
             file_path = os.path.join(folder_path, filename)
             
-            # Load and Split PDF
-            loader = PyPDFLoader(file_path)
-            docs = loader.load_and_split(text_splitter=text_splitter)
+            summary = summarize_single_pdf(file_path, model_name)
             
-            # 3. Manual Map-Reduce Summarization
-            # Summarize each chunk
-            chunk_summaries = []
-            for doc in docs:
-                messages = ADAPTIVE_PROMPT.format_messages(text=doc.page_content)
-                summary = llm.invoke(messages)
-                chunk_summaries.append(summary.content)
-            
-            # Combine and summarize the chunk summaries
-            combined_text = "\n".join(chunk_summaries)
-            final_messages = ADAPTIVE_PROMPT.format_messages(text=combined_text)
-            final_summary = llm.invoke(final_messages)
-
             if callback:
-                callback(filename, final_summary.content)
-            print(f"Summary for {filename}:\n{final_summary.content}\n")
+                callback(filename, summary)
+            print(f"Summary for {filename}:\n{summary}\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Summarize PDFs in a folder using Ollama")
