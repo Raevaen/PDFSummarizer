@@ -25,6 +25,13 @@ class SummarizerUI:
         self.select_file_button = tk.Button(root, text="Select Single File", command=self.select_file)
         self.select_file_button.pack(pady=5)
 
+        # Language selection
+        self.lang_label = tk.Label(root, text="Language:")
+        self.lang_label.pack(pady=5)
+        self.lang_entry = tk.Entry(root)
+        self.lang_entry.insert(0, "english")
+        self.lang_entry.pack(pady=5)
+
         # Run buttons
         self.run_button = tk.Button(root, text="Run Folder Summarization", command=self.run_summarization, state=tk.DISABLED)
         self.run_button.pack(pady=5)
@@ -102,17 +109,19 @@ class SummarizerUI:
 
     def process_summaries(self):
         try:
+            lang = self.lang_entry.get()
             def update_ui(filename, summary):
                 self.root.after(0, self.append_summary, filename, summary)
             
-            summarize_pdf_folder(self.folder_path, callback=update_ui)
+            summarize_pdf_folder(self.folder_path, lang=lang, callback=update_ui)
             self.root.after(0, self.finish_processing)
         except Exception as e:
             self.root.after(0, self.show_error, str(e))
 
     def process_single_summary(self):
         try:
-            summary = summarize_single_pdf(self.file_path)
+            lang = self.lang_entry.get()
+            summary = summarize_single_pdf(self.file_path, lang=lang, model_name="llama3.2")
             self.root.after(0, self.display_single_summary, summary)
         except Exception as e:
             self.root.after(0, self.show_error, str(e))
