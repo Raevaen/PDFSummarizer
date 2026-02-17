@@ -66,7 +66,7 @@ rag_chain = (
 
 
 if __name__ == "__main__":
-    pdf_path = "/Users/ciccio/Documents/document.pdf" 
+    pdf_path = "~/Documents/document.pdf" 
     summary = process_new_pdf(pdf_path)
     print("Ready")
 
