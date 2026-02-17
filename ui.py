@@ -113,7 +113,7 @@ class SummarizerUI:
             def update_ui(filename, summary):
                 self.root.after(0, self.append_summary, filename, summary)
             
-            summarize_pdf_folder(self.folder_path, lang=lang, callback=update_ui)
+            summarize_pdf_folder(self.folder_path, lang=lang, model_name="gemma3:1b", callback=update_ui)
             self.root.after(0, self.finish_processing)
         except Exception as e:
             self.root.after(0, self.show_error, str(e))
