@@ -5,7 +5,8 @@ Automatically summarize PDF documents using Ollama and LangChain.
 ## Requirements:
 
 - Ollama
-- llama3.2
+- llama3.2 or another model (es. gemma3:1b, etc..)
+- nomic-embed-text for rag.py
 
 ## Installation
 
