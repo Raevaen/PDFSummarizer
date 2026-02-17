@@ -121,7 +121,7 @@ class SummarizerUI:
     def process_single_summary(self):
         try:
             lang = self.lang_entry.get()
-            summary = summarize_single_pdf(self.file_path, lang=lang, model_name="llama3.2")
+            summary = summarize_single_pdf(self.file_path, lang=lang, model_name="gemma3:1b")
             self.root.after(0, self.display_single_summary, summary)
         except Exception as e:
             self.root.after(0, self.show_error, str(e))
