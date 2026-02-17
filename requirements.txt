@@ -6,3 +6,4 @@ pypdf==6.4.2
 ollama==0.6.1
 markdown==3.6
 langchain-chroma==0.2.6
+cryptography>=3.1
