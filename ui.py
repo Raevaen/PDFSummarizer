@@ -113,7 +113,7 @@ class SummarizerUI:
             def update_ui(filename, summary):
                 self.root.after(0, self.append_summary, filename, summary)
             
-            summarize_pdf_folder(self.folder_path, lang=lang, callback=update_ui)
+            summarize_pdf_folder(self.folder_path, lang=lang, model_name="gemma3:1b", callback=update_ui)
             self.root.after(0, self.finish_processing)
         except Exception as e:
             self.root.after(0, self.show_error, str(e))
@@ -121,7 +121,7 @@ class SummarizerUI:
     def process_single_summary(self):
         try:
             lang = self.lang_entry.get()
-            summary = summarize_single_pdf(self.file_path, lang=lang, model_name="llama3.2")
+            summary = summarize_single_pdf(self.file_path, lang=lang, model_name="gemma3:1b")
             self.root.after(0, self.display_single_summary, summary)
         except Exception as e:
             self.root.after(0, self.show_error, str(e))

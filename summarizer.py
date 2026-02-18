@@ -18,6 +18,7 @@ except ImportError as e:
 def summarize_single_pdf(file_path, lang="english", model_name="llama3.2"):
     """
     Summarize a single PDF file and return the summary as a string.
+    In ui.py is called with model_name = "gemma3:1b"
     
     Args:
         file_path (str): Path to the PDF file.
@@ -72,6 +73,7 @@ CONCISE SUMMARY:"""
 def summarize_pdf_folder(folder_path, model_name="llama3.2", lang="english", callback=None):
     """
     Summarize all PDFs in a folder and optionally call a callback for each.
+    In ui.py is called with model_name = "gemma3:1b"
     
     Args:
         folder_path (str): Path to the folder containing PDF files.

@@ -21,3 +21,9 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# Chroma
+*.bin
+*.sqlite3
+__azurite*
