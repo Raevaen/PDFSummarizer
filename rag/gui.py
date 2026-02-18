@@ -6,7 +6,7 @@ import threading
 class PDFGui:
     def __init__(self, root):
         self.root = root
-        self.root.title("Emanuele's PDF AI")
+        self.root.title("PDF RAG Chatbot")
         self.logic = ChatLogic()
 
         # 1. Conversation Space
