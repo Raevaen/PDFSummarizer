@@ -1,85 +1,72 @@
 import os
-from langchain_core.documents import Document
+from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_chroma import Chroma
-from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from langchain_classic.chains import create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.chat_history import InMemoryChatMessageHistory
 
 
-DB_PATH = "chroma_db"
-embeddings = OllamaEmbeddings(model="nomic-embed-text")
-llm = ChatOllama(model="gemma3:1b", temperature=0) # gemma3:1b is smaller but can process only text, llama3.2 can process text and images but is larger and a bit slower
-
-db = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
+MAIN_MODEL="gemma3:1b"  # Smaller, optimized for CPU, text-only
 
 
-def process_new_pdf(file_path):
-    """
-    Ingest a PDF into the vector database and generate a short summary.
+class ChatLogic:
+    def __init__(self):
+        # 1. Hardware-optimized Models (Great for i5 + 16GB RAM)
+        self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
+        self.llm = ChatOllama(model=MAIN_MODEL, temperature=0)
+        
+        # 2. Local Database (Persistence)
+        self.db = Chroma(persist_directory="./rag/chroma_db", embedding_function=self.embeddings)
+        
+        # 3. Simple Memory Store
+        self.history_store = {}
 
-    This function loads the PDF at `file_path`, splits it into text chunks, 
-    adds those chunks to the configured Chroma vector store, 
-    then generates a concise summary (using only the first few chunks for speed) 
-    and stores that summary in the same vector store as aseparate document 
-    with metadata `{"source": file_path, "type": "summary"}`.
+        # 4. Build the modern RAG Chain
+        self.chain = self._setup_chain()
 
-    Args:
-        file_path (str): Path to the PDF file to process.
+    def _setup_chain(self):
+        
+        system_prompt = (
+            "You are an expert assistant. Use the provided context to answer the question. "
+            "If you don't know the answer, say so. Keep it concise.\n\n"
+            "Context: {context}"
+        )
 
-    Returns:
-        str: The generated concise summary text.
-    """
-    loader = PyPDFLoader(file_path)
-    docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=250)
-    chunks = splitter.split_documents(docs)
-    
-    db.add_documents(chunks)
-    
-    summary_prompt = ChatPromptTemplate.from_template("Provide a concise summary of this text: {context}")
-    context_text = "\n".join([c.page_content for c in chunks[:10]]) # up to 20k characters
-    # | = pipe the output of the left-hand component into the input of the next component
-    summary_chain = summary_prompt | llm | StrOutputParser()
-    summary = summary_chain.invoke({"context": context_text})
-    
-    db.add_documents([Document(page_content=summary, metadata={"source": file_path, "type": "summary"})])
-    return summary
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{input}"),
+        ])
 
+        combine_docs_chain = create_stuff_documents_chain(self.llm, prompt)
+        
+        retrieval_chain = create_retrieval_chain(
+            self.db.as_retriever(search_kwargs={"k": 3}), 
+            combine_docs_chain
+        )
 
-qa_prompt = ChatPromptTemplate.from_template("""
-Use the context below to answer. If you don't know, say you don't know.
-Context: {context}
-Question: {question}
-""")
+        return RunnableWithMessageHistory(
+            retrieval_chain,
+            lambda session_id: self.history_store.setdefault(session_id, InMemoryChatMessageHistory()),
+            input_messages_key="input",
+            history_messages_key="chat_history",
+            output_messages_key="answer",
+        )
 
-rag_chain = (
-    {"context": db.as_retriever(search_kwargs={"k": 3}) 
-    | (lambda docs: "\n\n".join(d.page_content for d in docs)), 
-        "question": RunnablePassthrough()}
-    | qa_prompt 
-    | llm 
-    | StrOutputParser()
-)
+    def ingest_pdf(self, file_path):
+        """Loads PDF, splits it, and saves vectors to disk."""
+        loader = PyPDFLoader(file_path)
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        docs = loader.load_and_split(splitter)
+        self.db.add_documents(docs)
+        return f"Successfully vectorized: {os.path.basename(file_path)}"
 
-
-if __name__ == "__main__":
-    pdf_path = "~/Documents/document.pdf" 
-    summary = process_new_pdf(pdf_path)
-    print("Ready")
-
-    while True:
-        try:
-            question = input("Ask a question (/bye to quit): ").strip()
-        except EOFError:
-            break
-
-        if question == "/bye":
-            break
-        if not question:
-            continue
-
-        answer = rag_chain.invoke(question)
-        print("Answer:", answer)
+    def ask(self, query):
+        """Standard query method for the GUI."""
+        config = {"configurable": {"session_id": "gui_session"}}
+        result = self.chain.invoke({"input": query}, config=config)
+        return result["answer"]
